@@ -59,28 +59,104 @@ class World:
     def world(self):
         return self.space
 
-myWorld = World()        
+"""
+Abraham Hindle's code for websocket.
+
+in his code, the architechture for this:
+for each incoming msg:
+    for each clients
+        add msg to a client's queue
+definitions:
+    client: just a queue
+    greenlet: 
+        -light weight thread create and managed by gevent library.o
+        -can only run on one cpu so there is no real parallelism, only context switches
+        -no race condition because of no real parallelism
+        -good for I/O bounding tasks
+        async operations with gevent, but not parallel as these operations run on the same thread`
+
+#https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+#https://github.com/abramhindle/WebSocketsExamples/blob/master/chat.py
+"""
+
+class Client:
+    """
+    from          
+    https://github.com/abramhindle/WebSocketsExamples/blob/master/chat.py
+    
+    client is just a queue
+    """
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):   # put to the queue withouth blocking 
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
 
 def set_listener( entity, data ):
+
     ''' do something with the update ! '''
 
+
+    """
+    this function is like a callback, add something to the queue somewhere
+    each websocket should have a queue of msges. 
+          -queue like if chat app spam 10 msg then they have to be in a queue to be processed
+    """
+
+
+
+
+
+myWorld = World()        
+clients = []   # lists of webclient that wants to communcate with this server
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return flask.redirect("static/index.html") 
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
     return None
 
-@sockets.route('/subscribe')
+@sockets.route('/subscribe')  # end point for a client to subscribe to a websocket
 def subscribe_socket(ws):
     '''Fufill the websocket URL of /subscribe, every update notify the
-       websocket and read updates from the websocket '''
+       websocket and read updates from the websocket 
+       
+       #NOTE, can  subscribe_socket() be run on parallel? like if multiple request to this endpoint happens
+        ws - wweb socket file descriptor
+       
+       1. create a client(Queue)
+       2. add this client to the list of clients
+       3. spawn a greenlet thread     g = gevnet.spawn(   read_ws, ws , client) to make thread of  read_ws  with parameter (ws, client) concurrently
+           - gevent.spawn() is like pthrea_create()     needs to be joined 
+       
+       resource of gevenet:
+          https://sdiehl.github.io/gevent-tutorial/ 
+    '''
     # XXX: TODO IMPLEMENT ME
+    client = Client()
+    clients.append(client)
+
+    thread_ = gevent.spawn(read_ws, ws, client)   # we want to  fire up this thread. do we need to join threads?
+
+    try:
+        while True:
+            # block here
+            msg = client.get()  # pop the top of the msg stack and send it over to this websocket to the webclient
+            ws.send(msg)
+    except Exception as e:  # WebSocketError as e:
+        print("WS Error %s" % e)
+    finally:
+        clients.remove(client)
+        gevent.kill(thread_)
+
     return None
 
 

@@ -254,6 +254,10 @@ function wsSetup() {
     socket = new WebSocket(url);
     socket.onopen = function() {
         //XXX: TODO What are you going to do here?
+        // send Hello ?
+        alert("connection established")
+        let helloMsg = JSON.stringify({"msg" : "HELLO" })
+        socket.send(helloMsg)
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
@@ -262,6 +266,12 @@ function wsSetup() {
         try {
             debug("WebSocket Recv:" + msg.data);
             //XXX: TODO What are you going to do here?            
+            // receive ack msg from the server
+            
+            if (msg.data == "ACK") {
+                alert("received ack from the server")
+            }
+
         } catch (e) {
             alert("socket on message: " + e);
         }
