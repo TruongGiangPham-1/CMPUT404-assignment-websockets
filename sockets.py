@@ -111,7 +111,7 @@ def set_listener( entity, data ):
 
 
 myWorld = World()        
-clients = []   # lists of webclient that wants to communcate with this server
+clients = list()   # lists of webclient that wants to communcate with this server
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
@@ -121,8 +121,20 @@ def hello():
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
+
     # XXX: TODO IMPLEMENT ME
-    return None
+    try:
+        while True:
+            msg = ws.receive()
+            print ("WS RECV: %s" % msg)
+            if (msg is not None):
+                packet = json.loads(msg)
+                print("packet is ", packet)
+            else:
+                break
+    except:
+        pass 
+    
 
 @sockets.route('/subscribe')  # end point for a client to subscribe to a websocket
 def subscribe_socket(ws):
@@ -157,7 +169,6 @@ def subscribe_socket(ws):
         clients.remove(client)
         gevent.kill(thread_)
 
-    return None
 
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
