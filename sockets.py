@@ -121,7 +121,7 @@ def set_listener( entity, data ):
     #print("in set_listener, entity is ", entity, " data is ", data)
     for client in clients:
         #print("data is ", {entity: data})
-        client.put(entityCoord)  # {entityid: {x:int}} or {entityid: {y:int}}
+        client.put(json.dumps(entityCoord))  # {entityid: {x:int}} or {entityid: {y:int}}
 
 
 
@@ -141,35 +141,28 @@ def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
 
     # XXX: TODO IMPLEMENT ME
-    try:
-        while True:
-            # every packet we received from the index.html
-            print("before receive")
-            msg = ws.receive()
-            print ("WS RECV: %s" % msg)
-            print("after receive")
-            if (msg is not None):
-                print("msg not none")
-                packet = json.loads(msg)
-                print("msg jsong loaded")
-                header = ""
-                for k1, v1 in packet.items():
-                    header = k1
-                if (v1 == "HELLO"):
-                    print("received handshake 1 data ", packet)
-                else:
-                    # add this to the msg queue of clients. 
-                    # packet = {entityid:  {x: int, y:int, color: str, radius: int}}
-                    print("reached here")
-                    for entityid, body in packet.items():  # one iteration loop
-                        #print("entity id is ", entityid, "entity body is ", body)
-                        myWorld.set(entityid, body)  # this will call update on all client's listener to update client state(enqueue this entity body)
-                    print("reached here ")
-                print("line 165")   
+    
+    while True:
+        # every packet we received from the index.html
+        msg = ws.receive()
+        print ("WS RECV: %s" % msg)
+        if (msg is not None):
+            packet = json.loads(msg)
+            header = ""
+            for k1, v1 in packet.items():
+                header = k1
+            if (v1 == "HELLO"):
+                print("received handshake 1 data ", packet)
             else:
-                print("received none, breaking socket")
-    except:
-        pass 
+                # add this to the msg queue of clients. 
+                # packet = {entityid:  {x: int, y:int, color: str, radius: int}}
+                for entityid, body in packet.items():  # one iteration loop
+                    #print("entity id is ", entityid, "entity body is ", body)
+                    myWorld.set(entityid, body)  # this will call update on all client's listener to update client state(enqueue this entity body)
+        else:
+           break 
+
+         
     
 
 @sockets.route('/subscribe')  # end point for a client to subscribe to a websocket
