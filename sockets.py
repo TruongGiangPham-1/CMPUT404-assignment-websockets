@@ -95,24 +95,42 @@ class Client:
     def get(self):
         return self.queue.get()
 
+clients = list()   # lists of webclient that wants to communcate with this server
+
+
 def set_listener( entity, data ):
 
     ''' do something with the update ! '''
-
+    
 
     """
-    this function is like a callback, add something to the queue somewhere
+    this function is like a callback, add something to the queue somewhere everytime the world notify all listeners, this function will be called
+
     each websocket should have a queue of msges. 
-          -queue like if chat app spam 10 msg then they have to be in a queue to be processed
+
+    everytime the index.html send msg to socket here, the world call notifylistener and we enqueue the msg to all the client's msg queue
+
+    parameters:
+         -entity: int that represent entity id
+         -data: {x:1} or {y:1} the position or any other info about this enity
+
     """
+    entityCoord = {
+        entity: data
+    }
+    #print("in set_listener, entity is ", entity, " data is ", data)
+    for client in clients:
+        #print("data is ", {entity: data})
+        client.put(entityCoord)  # {entityid: {x:int}} or {entityid: {y:int}}
+
 
 
 
 
 
 myWorld = World()        
-clients = list()   # lists of webclient that wants to communcate with this server
 myWorld.add_set_listener( set_listener )
+
         
 @app.route('/')
 def hello():
@@ -125,12 +143,24 @@ def read_ws(ws,client):
     # XXX: TODO IMPLEMENT ME
     try:
         while True:
+            # every packet we received from the index.html
             msg = ws.receive()
             print ("WS RECV: %s" % msg)
             if (msg is not None):
                 packet = json.loads(msg)
-                print("packet is ", packet)
+                if (packet['msg'] == "HELLO"):
+                    print("received handshake 1 data ", packet)
+                else:
+                    # add this to the msg queue of clients. 
+                    # packet = {entityid:  {x: int, y:int, color: str, radius: int}}
+                    print("reached here")
+                    for entityid, body in packet.items():  # one iteration loop
+                        print("entity id is ", entityid, "entity body is ", body)
+                        myWorld.set(entityid, body)  # this will call update on all client's listener to update client state(enqueue this entity body)
+                    print("reached here ")
+                    
             else:
+                print("received none, breaking socket")
                 break
     except:
         pass 
@@ -162,10 +192,12 @@ def subscribe_socket(ws):
         while True:
             # block here
             msg = client.get()  # pop the top of the msg stack and send it over to this websocket to the webclient
+            print("msg popped from client queue is ", msg)
             ws.send(msg)
     except Exception as e:  # WebSocketError as e:
         print("WS Error %s" % e)
     finally:
+        print("wesocket killed")
         clients.remove(client)
         gevent.kill(thread_)
 

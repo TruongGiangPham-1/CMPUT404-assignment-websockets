@@ -125,6 +125,15 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just modified!
+    /*
+        entity: entity id
+        data: {x: int, y: int,   color: str,  radius: int}
+
+    */
+    //console.log("entity is ", entity, " data is ", data)
+
+    packet = {entity: data} 
+    socket.send(JSON.stringify(packet))  // socket packet must be type string
 }
 var counter = 0;
 function addEntityWithoutName(data) {
@@ -268,9 +277,16 @@ function wsSetup() {
             //XXX: TODO What are you going to do here?            
             // receive ack msg from the server
             
-            if (msg.data == "ACK") {
-                alert("received ack from the server")
+            //if (msg.data == "ACK") {
+            //    alert("received ack from the server")
+            //}
+            console.log("received from server" + msg.data)
+            var entityobj = JSON.parse(msg.data)
+            for (let k in entityobj) {
+                world[k] = entityobj[k]
             }
+            drawNextFrame()
+
 
         } catch (e) {
             alert("socket on message: " + e);
