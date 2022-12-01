@@ -47,7 +47,7 @@ world = {};
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
     with(context) {
-        beginPath();                
+        beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
@@ -55,7 +55,13 @@ function drawCircle(context,entity) {
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        fillRect(x + 20, y + 20, 25, 25)  // I added a rectanble
+        fillRect(x - x , y - y, 25, 25)  // I added a rectanble
+        fillRect(x + 20, y  - 20 - 2*y, 25, 25)  // I added a rectanble
+        fillRect(x - 20 - 2*x, y , 25, 25)  // I added a rectanble
+        moveTo(x + 50, y)
+        lineTo(x, y)
+        stroke();                               
     }
 }
 

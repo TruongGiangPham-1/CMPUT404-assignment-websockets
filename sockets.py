@@ -63,11 +63,11 @@ class World:
 Abraham Hindle's code for websocket.
 
 in his code, the architechture for this:
-for each incoming msg:
+for each incoming msg from index.html(aka when user draw something there):
     for each clients
         add msg to a client's queue
 definitions:
-    client: just a queue
+    client: just a queue, each client uses its own websocket to communicate with server
     greenlet: 
         -light weight thread create and managed by gevent library.o
         -can only run on one cpu so there is no real parallelism, only context switches
@@ -112,7 +112,7 @@ def set_listener( entity, data ):
 
     parameters:
          -entity: int that represent entity id
-         -data: {x:1} or {y:1} the position or any other info about this enity
+         -data: {x: int, y:int, color: str, radius: int}  the info about entity
 
     """
     entityCoord = {
@@ -121,7 +121,7 @@ def set_listener( entity, data ):
     #print("in set_listener, entity is ", entity, " data is ", data)
     for client in clients:
         #print("data is ", {entity: data})
-        client.put(json.dumps(entityCoord))  # {entityid: {x:int}} or {entityid: {y:int}}
+        client.put(json.dumps(entityCoord))  #  enequeu this entity to this client's queue to be read later in subscrib_ function
 
 
 
@@ -138,14 +138,19 @@ def hello():
     return flask.redirect("static/index.html") 
 
 def read_ws(ws,client):
-    '''A greenlet function that reads from the websocket and updates the world'''
+    '''A greenlet function that reads from the websocket and updates the world
+    
+    
+    # this implementation is from https://github.com/abramhindle/WebSocketsExamples/blob/master/chat.py
+    
+    '''
 
     # XXX: TODO IMPLEMENT ME
     
     while True:
         # every packet we received from the index.html
         msg = ws.receive()
-        print ("WS RECV: %s" % msg)
+        #print ("WS RECV: %s" % msg)
         if (msg is not None):
             packet = json.loads(msg)
             header = ""
@@ -167,8 +172,13 @@ def read_ws(ws,client):
 
 @sockets.route('/subscribe')  # end point for a client to subscribe to a websocket
 def subscribe_socket(ws):
-    '''Fufill the websocket URL of /subscribe, every update notify the
-       websocket and read updates from the websocket 
+    '''
+    
+    # this implementation is from https://github.com/abramhindle/WebSocketsExamples/blob/master/chat.py
+
+
+    Fufill the websocket URL of /subscribe, every update notify the
+       websocket and read updates from the websocket . each subscribe_socket() greenlet is responsible for one client
        
        #NOTE, can  subscribe_socket() be run on parallel? like if multiple request to this endpoint happens
         ws - wweb socket file descriptor
@@ -184,16 +194,18 @@ def subscribe_socket(ws):
     # XXX: TODO IMPLEMENT ME
     client = Client()
     clients.append(client)
+    # we want to  fire up this thread. do we need to join threads?
+    # NO, because we want to run the loop on line 192 after this thread runs in the background 
+    thread_ = gevent.spawn(read_ws, ws, client)   
+    
 
-    thread_ = gevent.spawn(read_ws, ws, client)   # we want to  fire up this thread. do we need to join threads?
-
+    #  keep trying to pop data from this client
     try:
         while True:
-            # block here
-            print("before client.get")
+            #print("before client.get")
             msg = client.get()  # pop the top of the msg stack and send it over to this websocket to the webclient
-            print("msg popped from client queue is ", msg)
-            ws.send(msg)
+            #print("msg popped from client queue is ", msg)
+            ws.send(msg)   # send back the data to the index.html to update the state there
     except Exception as e:  # WebSocketError as e:
         print("WS Error %s" % e)
     finally:
@@ -215,26 +227,50 @@ def flask_post_json():
     else:
         return json.loads(request.form.keys()[0])
 
+"""
+there endpoint below are from my ajax assignment
+
+"""
+
+
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    return None
+    # entity is the entityID, an INT
+    # so we wanna populate {entityID : {'x': 1, 'y': 2}}
+    postResponseBody = flask_post_json()  # get the response body of post /entity/<eneity> this is {'', ''} type
+    # entity is a json object of a dictionary
+
+    if request.method == 'POST':
+        myWorld.set(entity, postResponseBody)
+        entityGET = myWorld.get(entity)  # get by the enitty ID, this returns the value of entity 
+        # so if entity = {entity: {body}}, this returns the body
+        return entityGET
+    # PUT METHOD, so  will update ----------------------------------------------
+    for k, v in postResponseBody.items():  # 1 iteration loop
+        myWorld.update(entity, k, v)
+    entityGET = myWorld.get(entity)  # get by the enitty ID, this returns the value of entity 
+    # so if entity = {entity: {body}}, this returns the body
+    return entityGET
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    return None
+    return myWorld.world()
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    print("type of entity is ", type(entity))
+    # flask now will automatically cann jsonify so we can return python dict directly
+    return myWorld.get(entity)
 
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
     '''Clear the world out!'''
-    return None
+    myWorld.clear()
+    return myWorld.world()
 
 
 
