@@ -130,10 +130,13 @@ function addEntity(entity, data) {
         data: {x: int, y: int,   color: str,  radius: int}
 
     */
-    //console.log("entity is ", entity, " data is ", data)
-
-    packet = {entity: data} 
+    console.log("entity is ", entity, " data is ", data)
+    var packet = {} 
+    packet[entity] = data
     socket.send(JSON.stringify(packet))  // socket packet must be type string
+
+
+    //socket.send(packet)  // socket packet must be type string
 }
 var counter = 0;
 function addEntityWithoutName(data) {

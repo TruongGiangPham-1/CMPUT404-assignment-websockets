@@ -144,24 +144,30 @@ def read_ws(ws,client):
     try:
         while True:
             # every packet we received from the index.html
+            print("before receive")
             msg = ws.receive()
             print ("WS RECV: %s" % msg)
+            print("after receive")
             if (msg is not None):
+                print("msg not none")
                 packet = json.loads(msg)
-                if (packet['msg'] == "HELLO"):
+                print("msg jsong loaded")
+                header = ""
+                for k1, v1 in packet.items():
+                    header = k1
+                if (v1 == "HELLO"):
                     print("received handshake 1 data ", packet)
                 else:
                     # add this to the msg queue of clients. 
                     # packet = {entityid:  {x: int, y:int, color: str, radius: int}}
                     print("reached here")
                     for entityid, body in packet.items():  # one iteration loop
-                        print("entity id is ", entityid, "entity body is ", body)
+                        #print("entity id is ", entityid, "entity body is ", body)
                         myWorld.set(entityid, body)  # this will call update on all client's listener to update client state(enqueue this entity body)
                     print("reached here ")
-                    
+                print("line 165")   
             else:
                 print("received none, breaking socket")
-                break
     except:
         pass 
     
@@ -191,6 +197,7 @@ def subscribe_socket(ws):
     try:
         while True:
             # block here
+            print("before client.get")
             msg = client.get()  # pop the top of the msg stack and send it over to this websocket to the webclient
             print("msg popped from client queue is ", msg)
             ws.send(msg)
